@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require("mongodb");
+const debug = require("debug")("app:mongo")
 const { config } = require("../config");
 const mongoose = require('mongoose')
 
@@ -10,28 +11,30 @@ const MONGO_URI = `mongodb://${USER}:${PASSWORD}@cluster0-shard-00-00.shvvz.mong
 
 class MongoLib {
   constructor() {
-      console.log('MONGO_URI', MONGO_URI)
     this.client = new MongoClient(MONGO_URI, { useNewUrlParser: true });
     this.dbName = DB_NAME;
   }
 
-  async connect() {
-    try {
-      await this.client.connect()
-      console.log('Connected successfully to mongo')
-      return this.client.db(this.dbName)
-    } catch (error) {
-      console.log(error)
-    }
+  connect() {
+    return new Promise((resolve, reject) => {
+      this.client.connect(error => {
+        if (error) {
+          reject(error);
+        }
+
+        debug("Connected succesfully to mongo");
+        resolve(this.client.db(this.dbName));
+      });
+    });
   }
-  
-  async getAll(collection, query) {
-    try {      
-      const db = await this.connect()
-      return await db.collection(collection).find(query).toArray()
-    } catch (error) {
-      console.log(error)
-    }
+
+  getAll(collection, query) {
+    return this.connect().then(db => {
+      return db
+        .collection(collection)
+        .find(query)
+        .toArray();
+    });
   }
 
   get(collection, id) {
@@ -65,7 +68,6 @@ class MongoLib {
       })
       .then(() => id);
   }
-
 }
 
 module.exports = MongoLib;
